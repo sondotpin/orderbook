@@ -84,7 +84,9 @@ describe("OrderBook", () => {
 
     it("should place second buy", async() => {
       await book.connect(acc1).placeBuyOrder(1, parseAmount(1000, 18));
+      expect((await book.maxBuyPrice()).toNumber()).to.eq(1);
       await book.connect(acc2).placeBuyOrder(2, parseAmount(1000, 18));
+      expect((await book.maxBuyPrice()).toNumber()).to.eq(2);
       await book.connect(acc3).placeBuyOrder(3, parseAmount(1000, 18));
       await book.connect(acc4).placeBuyOrder(2, parseAmount(500, 18));
 
@@ -125,11 +127,9 @@ describe("OrderBook", () => {
       expect(step3.higherPrice.toNumber()).to.eq(0);
 
       expect(order1InStep2.amount.toString()).to.eq(parseAmount(1000, 18).toString());
-      expect(order1InStep2.amountMatched.toNumber()).to.eq(0);
       expect(order1InStep2.maker).to.eq(await acc2.getAddress());
 
       expect(order2InStep2.amount.toString()).to.eq(parseAmount(500, 18).toString());
-      expect(order2InStep2.amountMatched.toNumber()).to.eq(0);
       expect(order2InStep2.maker).to.eq(await acc4.getAddress());
     });
   });
@@ -161,7 +161,9 @@ describe("OrderBook", () => {
 
     it("should place second sell", async() => {
       await book.connect(acc1).placeSellOrder(1, parseAmount(1000, 18));
+      expect((await book.minSellPrice()).toNumber()).to.eq(1);
       await book.connect(acc2).placeSellOrder(2, parseAmount(1000, 18));
+      expect((await book.minSellPrice()).toNumber()).to.eq(1);
       await book.connect(acc3).placeSellOrder(3, parseAmount(1000, 18));
       await book.connect(acc4).placeSellOrder(2, parseAmount(500, 18));
 
@@ -202,12 +204,322 @@ describe("OrderBook", () => {
       expect(step3.higherPrice.toNumber()).to.eq(0);
 
       expect(order1InStep2.amount.toString()).to.eq(parseAmount(1000, 18).toString());
-      expect(order1InStep2.amountMatched.toNumber()).to.eq(0);
       expect(order1InStep2.maker).to.eq(await acc2.getAddress());
 
       expect(order2InStep2.amount.toString()).to.eq(parseAmount(500, 18).toString());
-      expect(order2InStep2.amountMatched.toNumber()).to.eq(0);
       expect(order2InStep2.maker).to.eq(await acc4.getAddress());
+    });
+  });
+
+  describe("#place buy order match with current sell orders ", () => {
+    it("should place an instant buy (perfect match)", async() => {
+      await book.connect(acc1).placeSellOrder(1, parseAmount(500, 18));
+      await book.connect(acc1).placeSellOrder(2, parseAmount(500, 18));
+      expect((await book.sellSteps(2)).lowerPrice.toNumber()).to.eq(1);
+
+      await book.connect(acc2).placeBuyOrder(1, parseAmount(500, 18));
+
+      const [
+        buyOrdersInStepCounter1,
+        sellOrdersInStepCounter1,
+        buyStep1,
+        sellStep1,
+        sellStep2,
+        buyOrderInStep1,
+        sellOrderInStep1,
+      ] = await Promise.all([
+        book.buyOrdersInStepCounter(1),
+        book.sellOrdersInStepCounter(1),
+        book.buySteps(1),
+        book.sellSteps(1),
+        book.sellSteps(2),
+        book.buyOrdersInStep(1, 1),
+        book.sellOrdersInStep(1, 1),
+      ]);
+
+      expect(buyOrdersInStepCounter1).to.eq(0);
+      expect(sellOrdersInStepCounter1).to.eq(0);
+
+      expect(sellStep1.amount.toNumber()).to.eq(0);
+      expect(sellStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep1.higherPrice.toNumber()).to.eq(0);
+
+      expect(sellStep2.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(sellStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep2.higherPrice.toNumber()).to.eq(0);
+
+      expect(buyStep1.amount.toNumber()).to.eq(0);
+      expect(buyStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep1.higherPrice.toNumber()).to.eq(0);
+
+      expect(buyOrderInStep1.amount.toNumber()).to.eq(0);
+      expect(buyOrderInStep1.maker).to.eq(ethers.constants.AddressZero);
+
+      expect(sellOrderInStep1.amount.toNumber()).to.eq(0);
+      expect(sellOrderInStep1.maker).to.eq(ethers.constants.AddressZero);
+    });
+
+    it("should place an over step buy", async() => {
+      await book.connect(acc1).placeSellOrder(1, parseAmount(500, 18));
+      await book.connect(acc1).placeSellOrder(2, parseAmount(500, 18));
+      await book.connect(acc2).placeBuyOrder(1, parseAmount(1000, 18));
+  
+      const [
+        buyOrdersInStepCounter1,
+        sellOrdersInStepCounter1,
+        buyStep1,
+        sellStep1,
+        sellStep2,
+        buyOrderInStep1,
+        sellOrderInStep1,
+      ] = await Promise.all([
+        book.buyOrdersInStepCounter(1),
+        book.sellOrdersInStepCounter(1),
+        book.buySteps(1),
+        book.sellSteps(1),
+        book.sellSteps(2),
+        book.buyOrdersInStep(1, 1),
+        book.sellOrdersInStep(1, 1),
+      ]);
+  
+      expect(buyOrdersInStepCounter1).to.eq(1);
+      expect(sellOrdersInStepCounter1).to.eq(0);
+  
+      expect(sellStep1.amount.toNumber()).to.eq(0);
+      expect(sellStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep1.higherPrice.toNumber()).to.eq(0);
+  
+      expect(sellStep2.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(sellStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep2.higherPrice.toNumber()).to.eq(0);
+  
+      expect(buyStep1.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(buyStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep1.higherPrice.toNumber()).to.eq(0);
+  
+      expect(buyOrderInStep1.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(buyOrderInStep1.maker).to.eq(await acc2.getAddress());
+  
+      expect(sellOrderInStep1.amount.toNumber()).to.eq(0);
+      expect(sellOrderInStep1.maker).to.eq(ethers.constants.AddressZero);
+    });
+
+    it("should place an over 2 step buy", async() => {
+      await book.connect(acc2).placeBuyOrder(1, parseAmount(100, 18));
+      await book.connect(acc2).placeBuyOrder(2, parseAmount(100, 18));
+      await book.connect(acc1).placeSellOrder(4, parseAmount(100, 18));
+      await book.connect(acc1).placeSellOrder(5, parseAmount(100, 18));
+      await book.connect(acc2).placeBuyOrder(5, parseAmount(150, 18));
+  
+      const [
+        buyOrdersInStepCounter1,
+        buyOrdersInStepCounter2,
+        buyOrdersInStepCounter5,
+        sellOrdersInStepCounter4,
+        sellOrdersInStepCounter5,
+        buyStep1,
+        buyStep2,
+        buyStep5,
+        sellStep4,
+        sellStep5,
+      ] = await Promise.all([
+        book.buyOrdersInStepCounter(1),
+        book.buyOrdersInStepCounter(2),
+        book.buyOrdersInStepCounter(5),
+        book.sellOrdersInStepCounter(4),
+        book.sellOrdersInStepCounter(5),
+        book.buySteps(1),
+        book.buySteps(2),
+        book.buySteps(5),
+        book.sellSteps(4),
+        book.sellSteps(5),
+      ]);
+      const sellOrdersInStep51 = await book.sellOrdersInStep(5, 1);
+      expect((await book.maxBuyPrice()).toNumber()).to.eq(2);
+  
+      expect(buyOrdersInStepCounter1).to.eq(1);
+      expect(buyOrdersInStepCounter2).to.eq(1);
+      expect(buyOrdersInStepCounter5).to.eq(0);
+      expect(sellOrdersInStepCounter4).to.eq(0);
+      expect(sellOrdersInStepCounter5).to.eq(1);
+  
+      expect(buyStep1.amount.toString()).to.eq(parseAmount(100, 18).toString());
+      expect(buyStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep1.higherPrice.toNumber()).to.eq(2);
+  
+      expect(buyStep2.amount.toString()).to.eq(parseAmount(100, 18).toString());
+      expect(buyStep2.lowerPrice.toNumber()).to.eq(1);
+      expect(buyStep2.higherPrice.toNumber()).to.eq(0);
+  
+      expect(buyStep5.amount.toNumber()).to.eq(0);
+      expect(buyStep5.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep5.higherPrice.toNumber()).to.eq(0);
+
+      expect(sellStep4.amount.toNumber()).to.eq(0);
+      expect(sellStep4.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep4.higherPrice.toNumber()).to.eq(0);
+
+      expect(sellStep5.amount.toString()).to.eq(parseAmount(50, 18).toString());
+      expect(sellStep5.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep5.higherPrice.toNumber()).to.eq(0);
+  
+      expect(sellOrdersInStep51.amount.toString()).to.eq(parseAmount(50, 18).toString());
+      expect(sellOrdersInStep51.maker).to.eq(await acc1.getAddress());
+    });
+  });
+
+  describe("#place sell order match with current buy orders ", () => {
+    it("should place an instant buy (perfect match)", async() => {
+      await book.connect(acc1).placeBuyOrder(1, parseAmount(500, 18));
+      await book.connect(acc1).placeBuyOrder(2, parseAmount(500, 18));
+      await book.connect(acc2).placeSellOrder(2, parseAmount(500, 18));
+
+      const [
+        buyOrdersInStepCounter2,
+        sellOrdersInStepCounter2,
+        sellStep2,
+        buyStep1,
+        buyStep2,
+        buyOrderInStep2,
+        sellOrderInStep2,
+      ] = await Promise.all([
+        book.buyOrdersInStepCounter(2),
+        book.sellOrdersInStepCounter(2),
+        book.sellSteps(2),
+        book.buySteps(1),
+        book.buySteps(2),
+        book.buyOrdersInStep(2, 1),
+        book.sellOrdersInStep(2, 1),
+      ]);
+
+      expect(buyOrdersInStepCounter2).to.eq(0);
+      expect(sellOrdersInStepCounter2).to.eq(0);
+
+      expect(sellStep2.amount.toNumber()).to.eq(0);
+      expect(sellStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep2.higherPrice.toNumber()).to.eq(0);
+
+      expect(buyStep1.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(buyStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep1.higherPrice.toNumber()).to.eq(0);
+
+      expect(buyStep2.amount.toNumber()).to.eq(0);
+      expect(buyStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep2.higherPrice.toNumber()).to.eq(0);
+
+      expect(buyOrderInStep2.amount.toNumber()).to.eq(0);
+      expect(buyOrderInStep2.maker).to.eq(ethers.constants.AddressZero);
+
+      expect(sellOrderInStep2.amount.toNumber()).to.eq(0);
+      expect(sellOrderInStep2.maker).to.eq(ethers.constants.AddressZero);
+    });
+
+    it("should place an over step buy", async() => {
+      await book.connect(acc1).placeBuyOrder(1, parseAmount(500, 18));
+      await book.connect(acc1).placeBuyOrder(2, parseAmount(500, 18));
+      await book.connect(acc2).placeSellOrder(2, parseAmount(1000, 18));
+  
+      const [
+        buyOrdersInStepCounter2,
+        sellOrdersInStepCounter2,
+        buyStep1,
+        buyStep2,
+        sellStep2,
+        buyOrderInStep2,
+        sellOrderInStep2,
+      ] = await Promise.all([
+        book.buyOrdersInStepCounter(2),
+        book.sellOrdersInStepCounter(2),
+        book.buySteps(1),
+        book.buySteps(2),
+        book.sellSteps(2),
+        book.buyOrdersInStep(2, 1),
+        book.sellOrdersInStep(2, 1),
+      ]);
+  
+      expect(buyOrdersInStepCounter2).to.eq(0);
+      expect(sellOrdersInStepCounter2).to.eq(1);
+  
+      expect(buyStep2.amount.toNumber()).to.eq(0);
+      expect(buyStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep2.higherPrice.toNumber()).to.eq(0);
+  
+      expect(buyStep1.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(buyStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep1.higherPrice.toNumber()).to.eq(0);
+  
+      expect(sellStep2.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(sellStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep2.higherPrice.toNumber()).to.eq(0);
+  
+      expect(sellOrderInStep2.amount.toString()).to.eq(parseAmount(500, 18).toString());
+      expect(sellOrderInStep2.maker).to.eq(await acc2.getAddress());
+  
+      expect(buyOrderInStep2.amount.toNumber()).to.eq(0);
+      expect(buyOrderInStep2.maker).to.eq(ethers.constants.AddressZero);
+    });
+
+    it("should place an over 2 step buy", async() => {
+      await book.connect(acc2).placeBuyOrder(1, parseAmount(100, 18));
+      await book.connect(acc2).placeBuyOrder(2, parseAmount(100, 18));
+      await book.connect(acc1).placeSellOrder(4, parseAmount(100, 18));
+      await book.connect(acc1).placeSellOrder(5, parseAmount(100, 18));
+      await book.connect(acc2).placeSellOrder(1, parseAmount(150, 18));
+  
+      const [
+        buyOrdersInStepCounter1,
+        buyOrdersInStepCounter2,
+        sellOrdersInStepCounter1,
+        sellOrdersInStepCounter4,
+        sellOrdersInStepCounter5,
+        buyStep1,
+        buyStep2,
+        sellStep1,
+        sellStep4,
+        sellStep5,
+      ] = await Promise.all([
+        book.buyOrdersInStepCounter(1),
+        book.buyOrdersInStepCounter(2),
+        book.sellOrdersInStepCounter(1),
+        book.sellOrdersInStepCounter(4),
+        book.sellOrdersInStepCounter(5),
+        book.buySteps(1),
+        book.buySteps(2),
+        book.sellSteps(1),
+        book.sellSteps(4),
+        book.sellSteps(5),
+      ]);
+      const buyOrdersInStep51 = await book.buyOrdersInStep(1, 1);
+      expect((await book.maxBuyPrice()).toNumber()).to.eq(1);
+  
+      expect(buyOrdersInStepCounter1).to.eq(1);
+      expect(buyOrdersInStepCounter2).to.eq(0);
+      expect(sellOrdersInStepCounter1).to.eq(0);
+      expect(sellOrdersInStepCounter4).to.eq(1);
+      expect(sellOrdersInStepCounter5).to.eq(1);
+  
+      expect(buyStep1.amount.toString()).to.eq(parseAmount(50, 18).toString());
+      expect(buyStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep1.higherPrice.toNumber()).to.eq(0);
+  
+      expect(buyStep2.amount.toNumber()).to.eq(0);
+      expect(buyStep2.lowerPrice.toNumber()).to.eq(0);
+      expect(buyStep2.higherPrice.toNumber()).to.eq(0);
+  
+      expect(sellStep1.amount.toNumber()).to.eq(0);
+      expect(sellStep1.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep1.higherPrice.toNumber()).to.eq(0);
+
+      expect(sellStep4.amount.toString()).to.eq(parseAmount(100, 18).toString());
+      expect(sellStep4.lowerPrice.toNumber()).to.eq(0);
+      expect(sellStep4.higherPrice.toNumber()).to.eq(5);
+
+      expect(sellStep5.amount.toString()).to.eq(parseAmount(100, 18).toString());
+      expect(sellStep5.lowerPrice.toNumber()).to.eq(4);
+      expect(sellStep5.higherPrice.toNumber()).to.eq(0);
+  
+      expect(buyOrdersInStep51.amount.toString()).to.eq(parseAmount(50, 18).toString());
+      expect(buyOrdersInStep51.maker).to.eq(await acc2.getAddress());
     });
   });
 });

@@ -8,7 +8,6 @@ interface IOrderBook {
     struct Order {
         address maker;
         uint256 amount;
-        uint256 amountMatched;
     }
 
     struct Step {
@@ -20,10 +19,16 @@ interface IOrderBook {
     function placeBuyOrder (
         uint256 price,
         uint256 amountOfBaseToken
-    ) external returns (bool);
+    ) external;
 
     function placeSellOrder (
         uint256 price,
         uint256 amountOfTradeToken
-    ) external returns (bool);
+    ) external;
+
+    event PlaceBuyOrder(address sender, uint256 price, uint256 amountOfBaseToken);
+    event PlaceSellOrder(address sender, uint256 price, uint256 amountOfTradeToken);
+    event DrawToBuyBook(address sender, uint256 price, uint256 amountOfBaseToken);
+    event DrawToSellBook(address sender, uint256 price, uint256 amountOfTradeToken);
+
 }
