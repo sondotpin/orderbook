@@ -12,15 +12,34 @@
 
 -  [Run Tests](#run-tests)
 
+## Contract address
+
+Base Token
+
+```
+https://rinkeby.etherscan.io/address/0xe21C494B21a5E42D64C5a2a4eEE6098e67aaCeEC#code
+
+```
+
+Trade Token
+
+```
+https://rinkeby.etherscan.io/address/0x145551EBadAc72132bb562084596567BB497A1c4#code
+
+```
+
+Order Book
+
+```
+https://rinkeby.etherscan.io/address/0xcc6977FE97542BFEA4202Bf1a9017314E3d67dd9#code
+
+```
 
 ## Architecture
 
 ![book](https://github.com/sondotpin/orderbook/blob/master/book.png?raw=true)
   
 
-![book](https://github.com/sondotpin/orderbook/blob/master/book.png?raw=true)
-
-  
 
 The following structs are defined in the contract and used as parameters for some methods:
 
@@ -66,9 +85,9 @@ uint256 amount;
 
 | ----------- | ----------- | --------------------------------------------------------------------------------------- |
 
-| `price` | `uint256` | Price of trade token in order. |
+| `price`     | `uint256`   | Price of trade token in order.                                                          |
 
-| `amountOfBaseToken` | `uint256` | Amount of base token to buy.|
+| `amountOfBaseToken` | `uint256` | Amount of base token to buy.                                                      |
 
   
   
@@ -78,11 +97,11 @@ uint256 amount;
 
 | **Name** | **Type** | **Description** |
 
-| --------- | --------- | -------------------------------------- |
+| --------- | --------- | --------------------------------------     |
 
-| `tokenId` | `uint256` | Price of trade token in order. |
+| `tokenId` | `uint256` | Price of trade token in order.             |
 
-| `amountOfTradeToken` | `uint256` | Amount of trade token to sell.  |
+| `amountOfTradeToken`  | `uint256` | Amount of trade token to sell. |
   
 
 ## Local Development
@@ -98,13 +117,7 @@ The following assumes `node >= 12`
   
 
 ```shell script
-
-  
-
 yarn
-
-  
-
 ```
 
   
@@ -114,13 +127,7 @@ yarn
   
 
 ```shell script
-
-  
-
 yarn build
-
-  
-
 ```
 
   
@@ -130,11 +137,5 @@ yarn build
   
 
 ```shell script
-
-  
-
 yarn test
-
-  
-
 ```
