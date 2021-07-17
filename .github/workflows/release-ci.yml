@@ -31,6 +31,4 @@ jobs:
       - id: release
         name: release
         run: |
-          git tag v$(cat package.json | jq --raw-output '.version')
-          git push origin v$(cat package.json | jq --raw-output '.version')
           yarn publish --access public
