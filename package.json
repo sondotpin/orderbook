@@ -1,5 +1,5 @@
 {
-  "name": "@maticsale/core",
+  "name": "@orderbook-solidity/core",
   "version": "0.0.1",
   "private": false,
   "main": "./dist/index.js",

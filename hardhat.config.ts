@@ -12,9 +12,6 @@ import '@nomiclabs/hardhat-etherscan';
 // Go to https://buidler.dev/config/ to learn more
 const config: HardhatUserConfig = {
   networks: {
-    rinkeby: {
-      url: process.env.RINKEBY_RPC_ENDPOINT,
-    },
     hardhat: {},
   },
   solidity: {
@@ -38,9 +35,6 @@ const config: HardhatUserConfig = {
   mocha: {
     timeout: 20000
   },
-  etherscan: {
-    apiKey: process.env.ETHERSCAN_KEY
-  }
 };
 
 export default config;
