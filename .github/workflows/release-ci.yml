@@ -1,0 +1,36 @@
+name: release-ci
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  release:
+    if: "!contains(github.event.head_commit.message, '[ci skip]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: prepare
+        id: prepare
+        shell: bash
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_AUTH_TOKEN }}" >> ~/.npmrc
+          git config user.name "sondotpin"
+          git config user.email "hec.stw@gmail.com"
+      - name: install
+        id: install
+        run: |
+          yarn install --frozen-lockfile
+      - id: test
+        name: test
+        run: |
+          yarn test
+      - id: release
+        name: release
+        run: |
+          git tag v$(cat package.json | jq --raw-output '.version')
+          git push origin v$(cat package.json | jq --raw-output '.version')
+          yarn publish
